@@ -22,11 +22,12 @@
 
 .card {
   min-height: 250px;
+  min-width: 100px;
 }
 
 
 .card img {
-  width: 100% !important;
+  width: 80px !important;
   height: 150px !important;
   display: block !important;
   object-fit: cover !important;
