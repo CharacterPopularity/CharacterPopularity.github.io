@@ -36,11 +36,6 @@
 <div id="tag-filter"></div>
 <div id="character-list"></div>
 
-// inside renderCharacters() when building each card
-card.innerHTML = `
-  <div class="hero" style="background-image: url('${c.image}');">
-    <div class="hero-overlay"></div>
-    <h3 class="hero-name">${c.name}</h3>
 
     <div class="hero-tags">
       ${c.tags.map(t => `<span class="tag">${t}</span>`).join("")}
