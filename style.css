@@ -1,7 +1,7 @@
 :root{
   --card-w:150px;
-  --card-h:270px;    /* increased total card height */
-  --hero-h:190px;    /* larger hero area so more image shows */
+  --card-h:270px;
+  --hero-h:190px;
   --radius:14px;
   --accent:#ff6b6b;
   --bg:#0f0f10;
@@ -19,16 +19,44 @@ body{
 }
 header{
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   gap:18px;
   margin-bottom:12px;
 }
 #site-title{margin:0;font-size:1.15rem}
-#search-area{margin-left:auto}
+#search-area{margin-left:auto;position:relative}
 #search-input{
   padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);
   background:rgba(255,255,255,0.02);color:#fff;width:320px;
 }
+
+/* Tag suggestions dropdown (shown when search is focused) */
+#tag-suggestions{
+  position:absolute;
+  right:0;
+  top:44px;
+  width:320px;
+  max-height:220px;
+  overflow:auto;
+  background:linear-gradient(180deg,#0f1112,#0b0b0c);
+  border:1px solid rgba(255,255,255,0.06);
+  border-radius:10px;
+  padding:8px;
+  box-shadow:0 8px 20px rgba(0,0,0,0.6);
+  z-index:40;
+}
+#tag-suggestions button{
+  display:block;
+  width:100%;
+  text-align:left;
+  background:transparent;
+  border:none;
+  color:#ddd;
+  padding:6px 8px;
+  border-radius:8px;
+  cursor:pointer;
+}
+#tag-suggestions button:hover{background:rgba(255,255,255,0.02);color:var(--accent)}
 
 /* Layout */
 #layout{
@@ -39,13 +67,6 @@ header{
 
 /* Main column */
 #main-col{flex:1;min-width:320px}
-
-/* Uploader */
-#uploader{margin-bottom:12px}
-#uploader h2{margin:0 0 8px 0;font-size:1rem}
-#uploader-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-#uploader-form input{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:#fff}
-#uploader-form button{padding:8px 10px;border-radius:8px;border:none;background:var(--accent);color:#fff;cursor:pointer}
 
 /* Grid */
 #character-list{
