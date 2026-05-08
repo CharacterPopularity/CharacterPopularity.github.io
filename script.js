@@ -118,17 +118,22 @@ window.renderCharacters = function(filterTag = null) {
       const card = document.createElement("div");
       card.className = "card";
 
+      // hero uses background-image so the image is a background behind name/tags
       card.innerHTML = `
-        <img src="${c.image}" alt="${c.name}">
-        <h3>${c.name}</h3>
-        <p><strong>Series:</strong> ${c.series}</p>
-
-        <div class="tags">
-          ${c.tags.map(t => `<span class="tag">${t}</span>`).join("")}
+        <div class="hero" style="background-image: url('${c.image}');">
+          <h3 class="hero-name">${c.name}</h3>
+          <div class="hero-tags">
+            ${c.tags.map(t => `<span class="tag">${t}</span>`).join("")}
+          </div>
         </div>
 
-        <p><strong>Votes:</strong> ${c.votes}</p>
-        <button onclick="vote('${c.name}')">Vote</button>
+        <div class="card-body">
+          <p class="series"><strong>Series:</strong> ${c.series}</p>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <p class="votes" style="margin:0;"><strong>Votes:</strong> ${c.votes}</p>
+            <button onclick="vote('${c.name}')" style="padding:6px 8px;border-radius:8px;border:none;background:#ff6b6b;color:#fff;cursor:pointer;">Vote</button>
+          </div>
+        </div>
       `;
 
       list.appendChild(card);
