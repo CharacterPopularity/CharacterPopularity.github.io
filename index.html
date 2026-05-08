@@ -3,8 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <title>Character Popularity Rankings</title>
-<link rel="stylesheet" href="style.css?v=1">
-<script type="module" src="script.js?v=1"></script>
+<!-- replace your static tags with this -->
+<script>
+  // generate a short random token; use Date.now() for monotonic versioning
+  const rand = Math.random().toString(36).slice(2,9); 
+  const cssHref = `style.css?v=${rand}`;
+  const jsSrc = `script.js?v=${rand}`;
+
+  // inject stylesheet
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = cssHref;
+  document.head.appendChild(link);
+
+  // inject module script
+  const mod = document.createElement('script');
+  mod.type = 'module';
+  mod.src = jsSrc;
+  document.head.appendChild(mod);
+</script>
 
 
 </head>
