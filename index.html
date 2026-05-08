@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <title>Character Popularity Rankings</title>
- <link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=1">
+<script type="module" src="script.js?v=1"></script>
+
 
 </head>
 
@@ -17,8 +19,24 @@
 <div id="tag-filter"></div>
 <div id="character-list"></div>
 
-<!-- Load your script as a module (ONLY ONCE) -->
-<script type="module" src="script.js"></script>
+// inside renderCharacters() when building each card
+card.innerHTML = `
+  <div class="hero" style="background-image: url('${c.image}');">
+    <div class="hero-overlay"></div>
+    <h3 class="hero-name">${c.name}</h3>
+
+    <div class="hero-tags">
+      ${c.tags.map(t => `<span class="tag">${t}</span>`).join("")}
+    </div>
+  </div>
+
+  <div class="card-body">
+    <p class="series"><strong>Series:</strong> ${c.series}</p>
+    <p class="votes"><strong>Votes:</strong> ${c.votes}</p>
+    <button onclick="vote('${c.name}')">Vote</button>
+  </div>
+`;
+
 
 </body>
 </html>
