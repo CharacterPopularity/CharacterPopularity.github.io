@@ -36,8 +36,8 @@
 
 
 .card img {
-  width: 80px !important;
-  height: 150px !important;
+  width: 150px !important;
+  height: 250px !important;
   display: block !important;
   object-fit: cover !important;
   object-position: top !important;
