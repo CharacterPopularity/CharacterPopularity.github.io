@@ -1,54 +1,46 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Character Popularity Rankings</title>
-<!-- replace your static tags with this -->
-<script>
-  // generate a short random token; use Date.now() for monotonic versioning
-  const rand = Math.random().toString(36).slice(2,9); 
-  const cssHref = `style.css?v=${rand}`;
-  const jsSrc = `script.js?v=${rand}`;
 
-  // inject stylesheet
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = cssHref;
-  document.head.appendChild(link);
+  <!-- Remove any static link/script tags you had before.
+       This small inline script injects the stylesheet and module script
+       with a random query token to bust caches while you develop. -->
+  <script>
+    (function() {
+      const token = Math.random().toString(36).slice(2,9);
+      const cssHref = `style.css?v=${token}`;
+      const jsSrc = `script.js?v=${token}`;
 
-  // inject module script
-  const mod = document.createElement('script');
-  mod.type = 'module';
-  mod.src = jsSrc;
-  document.head.appendChild(mod);
-</script>
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = cssHref;
+      document.head.appendChild(link);
 
-
+      const mod = document.createElement('script');
+      mod.type = 'module';
+      mod.src = jsSrc;
+      document.head.appendChild(mod);
+    })();
+  </script>
 </head>
-
 <body>
-
-<header>
-  <h1>Character Popularity Rankings</h1>
-  <p>Vote for your favorite characters and explore by tags</p>
-</header>
-
-<div id="tag-filter"></div>
-<div id="character-list"></div>
-
-
-    <div class="hero-tags">
-      ${c.tags.map(t => `<span class="tag">${t}</span>`).join("")}
+  <header>
+    <h1 id="site-title">Character Popularity Rankings</h1>
+    <div id="controls">
+      <div id="tag-filter" aria-label="Filter by tag"></div>
+      <button id="reset-filter" style="display:none;">Show all</button>
     </div>
-  </div>
+  </header>
 
-  <div class="card-body">
-    <p class="series"><strong>Series:</strong> ${c.series}</p>
-    <p class="votes"><strong>Votes:</strong> ${c.votes}</p>
-    <button onclick="vote('${c.name}')">Vote</button>
-  </div>
-`;
+  <main>
+    <section id="character-list" aria-live="polite"></section>
+  </main>
 
-
+  <footer>
+    <small>Built with ❤️</small>
+  </footer>
 </body>
 </html>
