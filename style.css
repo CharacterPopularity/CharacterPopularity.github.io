@@ -21,6 +21,15 @@
 </html>
 
 .card {
+  background-color: #111;          /* dark base for contrast */
+  border-radius: 20px;             /* rounded corners */
+  overflow: hidden;                /* keeps image corners rounded */
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  color: #fff;
+  text-align: center;
+  padding: 10px;
+  position: relative;
+  
   min-height: 250px;
   min-width: 100px;
 }
@@ -32,5 +41,41 @@
   display: block !important;
   object-fit: cover !important;
   object-position: top !important;
-  background: red !important; /* TEMPORARY DEBUG */
+  border-radius: 20px 20px 0 0;
+  filter: brightness(0.8);
+}
+.card h3 {
+  position: absolute;
+  top: 15px;
+  left: 0;
+  right: 0;
+  font-size: 1.4em;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.7);
+}
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(0,255,255,0.2), transparent 70%);
+  z-index: 0;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.tag {
+  background-color: rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 4px 10px;
+  font-size: 0.85em;
+  color: #ddd;
+}
+
 }
