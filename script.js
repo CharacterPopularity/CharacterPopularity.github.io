@@ -27,18 +27,18 @@ const db = getDatabase(app);
 
 const characters = [
   {
-    name: "Megumin",
-    series: "Konosuba",
-    tags: ["mage", "explosion", "chaotic"],
+    name: "Megumi",
+    series: "Jujutsu Kaisen",
+    tags: ["urchin", "daddy issues", "deuterogonist"],
     votes: 0,
-    image: "images/megumin.png"
+    image: "https://i.pinimg.com/1200x/09/51/0f/09510f6ef14ef55802bd7463c622aef2.jpg"
   },
   {
     name: "Gojo Satoru",
     series: "Jujutsu Kaisen",
     tags: ["teacher", "OP", "white hair"],
     votes: 0,
-    image: "images/gojo.png"
+    image: "https://i.pinimg.com/originals/b4/27/c3/b427c399f12289a23dd1caa82c40530f.jpg"
   }
 ];
 let votedCharacters = JSON.parse(localStorage.getItem("votedCharacters")) || [];
