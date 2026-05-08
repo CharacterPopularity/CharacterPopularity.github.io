@@ -21,7 +21,7 @@
 </html>
 
 .card img {
-  width: 50px;
+  width: 20%;
   height: 120px;        /* portrait height */
   object-fit: cover;    /* crops edges, keeps proportions */
   object-position: top;  /* keeps faces centered */
