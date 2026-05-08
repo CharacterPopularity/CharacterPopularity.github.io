@@ -1,13 +1,15 @@
-// Import the functions you need from the SDKs you need
-npm install firebase
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+/* ---------------------------------------------------------
+   FIREBASE v9 (MODULAR) INITIALIZATION
+   --------------------------------------------------------- */
 
-// Your web app's Firebase configuration
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+
+// Your Firebase config (from your console)
 const firebaseConfig = {
   apiKey: "AIzaSyBFD3pEleXfgxT5BXrcDLU7Pq2EAtX2KA4",
   authDomain: "character-popularity.firebaseapp.com",
+  databaseURL: "https://character-popularity-default-rtdb.firebaseio.com",
   projectId: "character-popularity",
   storageBucket: "character-popularity.firebasestorage.app",
   messagingSenderId: "34609153629",
@@ -16,26 +18,39 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+
+/* ---------------------------------------------------------
+   CHARACTER DATA
+   --------------------------------------------------------- */
 
 const characters = [
   {
-    name: "Megumi Fushiguro",
+    name: "Megumin",
     series: "Konosuba",
     tags: ["mage", "explosion", "chaotic"],
     votes: 0,
-    image: "https://www.pinterest.com/pin/711005859946662848/"
+    image: "images/megumin.png"
   },
   {
-    name: "Satoru Gojo",
+    name: "Gojo Satoru",
     series: "Jujutsu Kaisen",
     tags: ["teacher", "OP", "white hair"],
     votes: 0,
-    image: "https://fr.pinterest.com/pin/8303580557245603/"
+    image: "images/gojo.png"
   }
 ];
 
+
+/* ---------------------------------------------------------
+   LOAD GLOBAL VOTES (REALTIME)
+   --------------------------------------------------------- */
+
 function loadVotes(callback) {
-  db.ref("characters").on("value", snapshot => {
+  const votesRef = ref(db, "characters");
+
+  onValue(votesRef, snapshot => {
     const data = snapshot.val() || {};
 
     characters.forEach(c => {
@@ -45,17 +60,41 @@ function loadVotes(callback) {
     callback();
   });
 }
-function vote(name) {
-  const charRef = db.ref("characters/" + name);
 
-  charRef.get().then(snapshot => {
+
+/* ---------------------------------------------------------
+   SAVE A VOTE
+   --------------------------------------------------------- */
+
+window.vote = function(name) {
+  const charRef = ref(db, "characters/" + name);
+
+  get(charRef).then(snapshot => {
     let currentVotes = snapshot.exists() ? snapshot.val() : 0;
-    charRef.set(currentVotes + 1);
+    set(charRef, currentVotes + 1);
   });
+};
+
+
+/* ---------------------------------------------------------
+   RENDER TAG BUTTONS
+   --------------------------------------------------------- */
+
+function renderTags() {
+  const allTags = [...new Set(characters.flatMap(c => c.tags))];
+  const tagDiv = document.getElementById("tag-filter");
+
+  tagDiv.innerHTML = allTags
+    .map(t => `<button onclick="renderCharacters('${t}')">${t}</button>`)
+    .join(" ");
 }
 
 
-function renderCharacters(filterTag = null) {
+/* ---------------------------------------------------------
+   RENDER CHARACTER CARDS
+   --------------------------------------------------------- */
+
+window.renderCharacters = function(filterTag = null) {
   const list = document.getElementById("character-list");
   list.innerHTML = "";
 
@@ -81,25 +120,16 @@ function renderCharacters(filterTag = null) {
 
       list.appendChild(card);
     });
-}
+};
 
-function renderTags() {
-  const allTags = [...new Set(characters.flatMap(c => c.tags))];
-  const tagDiv = document.getElementById("tag-filter");
 
-  tagDiv.innerHTML = allTags
-    .map(t => `<button onclick="renderCharacters('${t}')">${t}</button>`)
-    .join(" ");
-}
-
-function vote(name) {
-  const char = characters.find(c => c.name === name);
-  char.votes++;
-  saveVote(name, char.votes);
-  renderCharacters();
-}
-
+/* ---------------------------------------------------------
+   START APP
+   --------------------------------------------------------- */
 
 loadVotes(() => {
   renderTags();
+  renderCharacters();
+});
+
   renderCharacters();
