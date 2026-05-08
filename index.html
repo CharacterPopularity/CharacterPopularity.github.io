@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Character Popularity Rankings</title>
 
-  <!-- Inject CSS + module with a random token to bust cache during development -->
+  <!-- Cache-busting injector (random token) -->
   <script>
     (function() {
       const token = Math.random().toString(36).slice(2,9);
@@ -26,32 +26,20 @@
   <header>
     <h1 id="site-title">Character Popularity Rankings</h1>
 
-    <div id="search-area" aria-label="Search and uploader">
-      <input id="search-input" type="search" placeholder="Search name, series, or tags..." aria-label="Search characters">
+    <div id="search-area" aria-label="Search and filters">
+      <input id="search-input" type="search" placeholder="Search name, series, or tags..." aria-label="Search characters" autocomplete="off">
+      <div id="tag-suggestions" role="listbox" aria-label="Tag suggestions" hidden></div>
+      <div style="margin-top:8px;">
+        <button id="clear-filters" style="padding:6px 10px;border-radius:8px;border:none;background:#444;color:#fff;cursor:pointer;">Clear filters</button>
+      </div>
     </div>
   </header>
 
   <div id="layout">
-    <!-- Main column: uploader + grid -->
     <main id="main-col">
-      <section id="uploader">
-        <h2>Add character</h2>
-        <form id="uploader-form">
-          <input id="input-name" type="text" placeholder="Name" required>
-          <input id="input-series" type="text" placeholder="Series" required>
-          <input id="input-tags" type="text" placeholder="Tags (comma separated)">
-          <input id="input-image" type="url" placeholder="Image URL" required>
-          <div style="display:flex;gap:8px;">
-            <button id="add-btn" type="submit">Add character</button>
-            <button id="clear-btn" type="button">Clear</button>
-          </div>
-        </form>
-      </section>
-
       <section id="character-list" aria-live="polite"></section>
     </main>
 
-    <!-- Right column: ranking -->
     <aside id="right-col" aria-label="Top characters">
       <h3>Top Characters</h3>
       <ol id="rank-list"></ol>
@@ -59,7 +47,7 @@
   </div>
 
   <footer>
-    <small>Built with <3</small>
+    <small>Made by Carly T <3</small>
   </footer>
 </body>
 </html>
