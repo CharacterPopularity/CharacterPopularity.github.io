@@ -82,50 +82,62 @@
   flex-direction: column;
 }
 
-/* Hero area: image as background */
-.card .hero {
-  position: relative;
-  width: 100%;
-  height: 200px;               /* adjust to make image smaller/larger */
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+/* Top Hero Variant */
+.card.hero-top {
+  width: 150px;
+  height: 250px;
+  background: #0f0f10;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+  color: #fff;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;   /* pushes tags/name toward bottom */
-  padding: 12px;
+  margin: 10px;
+  position: relative;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+/* hero area (top portion only) */
+.card.hero-top .hero {
+  width: 100%;
+  height: 150px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 8px;
   box-sizing: border-box;
 }
 
-/* Subtle overlay to improve text contrast */
-.card .hero-overlay {
+/* overlay for contrast */
+.card.hero-top .hero::after {
+  content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0.15));
+  background: linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0.08));
   z-index: 0;
 }
 
-/* Name sits on top of overlay */
-.card .hero-name {
+/* name and tags on top of hero */
+.card.hero-top .hero-name {
   position: relative;
   z-index: 2;
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 800;
-  letter-spacing: 0.2px;
   color: #fff;
-  text-shadow: 0 6px 18px rgba(0,0,0,0.6);
+  text-shadow: 0 6px 14px rgba(0,0,0,0.6);
+  line-height: 1;
 }
+.card.hero-top .hero-tags { position: relative; z-index:2; display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+.card.hero-top .tag { background: rgba(255,255,255,0.08); color:#eaeaea; padding:3px 7px; border-radius:999px; font-size:0.68rem; }
 
-/* Tags inside the hero, just under the name */
-.card .hero-tags {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 8px;
-}
+/* bottom body */
+.card.hero-top .card-body { padding:8px; display:flex; flex-direction:column; gap:6px; justify-content:space-between; flex:1; font-size:0.78rem; }
+
 
 /* Tag pill */
 .card .tag {
