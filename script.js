@@ -15,15 +15,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-/* ---------------- Data ---------------- */
+/* ---------------- Data (Megumi removed) ---------------- */
 let characters = [
-  {
-    name: "Megumi",
-    series: "Jujutsu Kaisen",
-    tags: ["urchin", "daddy issues", "deuterogonist"],
-    votes: 0,
-    image: "https://i.pinimg.com/1200x/09/51/0f/09510f6ef14ef55802bd7463c622aef2.jpg"
-  },
   {
     name: "Gojo Satoru",
     series: "Jujutsu Kaisen",
@@ -33,7 +26,7 @@ let characters = [
   }
 ];
 
-let votedCharacters = JSON.parse(localStorage.getItem("votedCharacters")) || [];
+let votedTimestamps = JSON.parse(localStorage.getItem("votedTimestamps")) || {}; // { "CharacterName": 162... }
 
 /* ---------------- Realtime votes loader ---------------- */
 function loadVotes(callback) {
@@ -44,7 +37,6 @@ function loadVotes(callback) {
     characters.forEach(c => {
       c.votes = data[c.name] || 0;
     });
-    // also add any DB-only characters into local array (so rank shows them)
     Object.keys(data).forEach(name => {
       if (!characters.find(x => x.name === name)) {
         characters.push({
@@ -52,7 +44,7 @@ function loadVotes(callback) {
           series: "Unknown",
           tags: [],
           votes: data[name],
-          image: "" // no image known
+          image: ""
         });
       }
     });
@@ -60,21 +52,40 @@ function loadVotes(callback) {
   });
 }
 
-/* ---------------- Vote function ---------------- */
+/* ---------------- Vote function (1 vote per 24 hours per device per character) ---------------- */
 window.vote = function(name) {
-  if (votedCharacters.includes(name)) {
-    alert("You already voted for " + name + " on this device.");
+  const now = Date.now();
+  const key = `vote_ts_${name}`;
+  const last = parseInt(localStorage.getItem(key) || "0", 10);
+  const DAY = 24 * 60 * 60 * 1000;
+
+  if (last && (now - last) < DAY) {
+    const remaining = Math.ceil((DAY - (now - last)) / (60*60*1000));
+    alert(`You can vote for ${name} again in about ${remaining} hour(s).`);
     return;
   }
-  votedCharacters.push(name);
-  localStorage.setItem("votedCharacters", JSON.stringify(votedCharacters));
 
+  // mark vote timestamp locally
+  localStorage.setItem(key, String(now));
+  votedTimestamps[name] = now;
+  localStorage.setItem("votedTimestamps", JSON.stringify(votedTimestamps));
+
+  // Update Firebase
   const charRef = ref(db, "characters/" + name);
   get(charRef).then(snapshot => {
     let currentVotes = snapshot.exists() ? snapshot.val() : 0;
     set(charRef, currentVotes + 1);
+  }).catch(err => {
+    console.error(err);
+    alert("Vote failed to save. Please try again later.");
   });
 };
+
+/* ---------------- Utility: unique sorted tags ---------------- */
+function getAllTags() {
+  const all = [...new Set(characters.flatMap(c => c.tags || []))];
+  return all.sort((a,b) => a.localeCompare(b, undefined, {sensitivity:'base'}));
+}
 
 /* ---------------- Render ranking (right column) ---------------- */
 function renderRankList() {
@@ -87,7 +98,6 @@ function renderRankList() {
     li.onclick = () => {
       // filter to that character and scroll into view
       renderCharacters(c.name);
-      // find card and scroll
       setTimeout(() => {
         const card = Array.from(document.querySelectorAll('.card .hero-name'))
           .find(h => h.textContent === c.name);
@@ -103,13 +113,11 @@ window.renderCharacters = function(filter = null) {
   const list = document.getElementById("character-list");
   list.innerHTML = "";
 
-  // filter can be a tag, name, or series; if null show all
   const q = filter ? String(filter).toLowerCase() : null;
 
   characters
     .filter(c => {
       if (!q) return true;
-      // match name, series, or tags
       if (c.name && c.name.toLowerCase().includes(q)) return true;
       if (c.series && c.series.toLowerCase().includes(q)) return true;
       if (c.tags && c.tags.some(t => t.toLowerCase().includes(q))) return true;
@@ -120,7 +128,6 @@ window.renderCharacters = function(filter = null) {
       const card = document.createElement("div");
       card.className = "card hero-top";
 
-      // hero uses background-image so the image is a background behind name/tags
       const imageUrl = c.image || "";
       card.innerHTML = `
         <div class="hero" style="background-image:url('${imageUrl}');" aria-hidden="true">
@@ -139,7 +146,6 @@ window.renderCharacters = function(filter = null) {
         </div>
       `;
 
-      // accessibility: expose name and tags to screen readers
       const sr = document.createElement('div');
       sr.className = 'visually-hidden';
       sr.setAttribute('aria-hidden','false');
@@ -152,80 +158,72 @@ window.renderCharacters = function(filter = null) {
   renderRankList();
 };
 
-/* ---------------- Search bar (live) ---------------- */
-function setupSearch() {
+/* ---------------- Search bar + tag suggestions ---------------- */
+function setupSearchAndTags() {
   const input = document.getElementById("search-input");
-  let last = "";
-  input.addEventListener('input', e => {
+  const suggestions = document.getElementById("tag-suggestions");
+  const clearBtn = document.getElementById("clear-filters");
+
+  function showTagSuggestions() {
+    const tags = getAllTags();
+    suggestions.innerHTML = "";
+    if (tags.length === 0) {
+      const p = document.createElement('div');
+      p.textContent = "No tags available";
+      p.style.color = "#777";
+      suggestions.appendChild(p);
+    } else {
+      tags.forEach(t => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = t;
+        btn.onclick = () => {
+          input.value = t;
+          renderCharacters(t);
+          suggestions.hidden = true;
+          clearBtn.style.display = "inline-block";
+        };
+        suggestions.appendChild(btn);
+      });
+    }
+    suggestions.hidden = false;
+  }
+
+  input.addEventListener('focus', () => {
+    showTagSuggestions();
+  });
+
+  input.addEventListener('input', (e) => {
     const v = e.target.value.trim();
-    if (v === last) return;
-    last = v;
     if (v === "") {
       renderCharacters();
     } else {
       renderCharacters(v);
     }
   });
-}
 
-/* ---------------- Uploader UI ---------------- */
-function setupUploader() {
-  const form = document.getElementById("uploader-form");
-  const nameIn = document.getElementById("input-name");
-  const seriesIn = document.getElementById("input-series");
-  const tagsIn = document.getElementById("input-tags");
-  const imageIn = document.getElementById("input-image");
-  const clearBtn = document.getElementById("clear-btn");
-
-  form.addEventListener('submit', e => {
-    e.preventDefault();
-    const name = nameIn.value.trim();
-    const series = seriesIn.value.trim() || "Unknown";
-    const tags = tagsIn.value.split(',').map(t => t.trim()).filter(Boolean);
-    const image = imageIn.value.trim();
-
-    if (!name || !image) {
-      alert("Please provide at least a name and image URL.");
-      return;
+  // hide suggestions when clicking outside
+  document.addEventListener('click', (ev) => {
+    const target = ev.target;
+    if (!document.getElementById('search-area').contains(target)) {
+      suggestions.hidden = true;
     }
-
-    // prevent duplicate names
-    if (characters.find(c => c.name.toLowerCase() === name.toLowerCase())) {
-      alert("A character with that name already exists.");
-      return;
-    }
-
-    const newChar = { name, series, tags, votes: 0, image };
-    characters.push(newChar);
-
-    // write initial votes to Firebase (0)
-    const charRef = ref(db, "characters/" + name);
-    set(charRef, 0).then(() => {
-      // re-render
-      renderCharacters();
-      // clear form
-      nameIn.value = "";
-      seriesIn.value = "";
-      tagsIn.value = "";
-      imageIn.value = "";
-    }).catch(err => {
-      console.error(err);
-      alert("Failed to save to database. Character added locally only.");
-      renderCharacters();
-    });
   });
 
-  clearBtn.addEventListener('click', () => {
-    nameIn.value = "";
-    seriesIn.value = "";
-    tagsIn.value = "";
-    imageIn.value = "";
-  });
+  // Clear filters button
+  clearBtn.onclick = () => {
+    input.value = "";
+    renderCharacters();
+    clearBtn.style.display = "none";
+    suggestions.hidden = true;
+  };
+
+  // initially hide clear button
+  clearBtn.style.display = "none";
 }
 
 /* ---------------- Start app ---------------- */
 loadVotes(() => {
-  setupSearch();
-  setupUploader();
+  setupSearchAndTags();
   renderCharacters();
 });
