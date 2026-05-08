@@ -44,8 +44,8 @@
   border-radius: 10px 10px 10px 10px;
 }
 .card h3 {
-  position: relative;
-  top: 5px;
+  position: absolute;
+  top: 35px;
   left: 0;
   right: 0;
   font-size: 1.4em;
