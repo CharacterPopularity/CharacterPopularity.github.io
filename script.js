@@ -34,16 +34,26 @@ const characters = [
   }
 ];
 
-function loadVotes() {
-  characters.forEach(c => {
-    const saved = localStorage.getItem(c.name);
-    if (saved) c.votes = parseInt(saved);
+function loadVotes(callback) {
+  db.ref("characters").on("value", snapshot => {
+    const data = snapshot.val() || {};
+
+    characters.forEach(c => {
+      c.votes = data[c.name] || 0;
+    });
+
+    callback();
+  });
+}
+function vote(name) {
+  const charRef = db.ref("characters/" + name);
+
+  charRef.get().then(snapshot => {
+    let currentVotes = snapshot.exists() ? snapshot.val() : 0;
+    charRef.set(currentVotes + 1);
   });
 }
 
-function saveVote(name, votes) {
-  localStorage.setItem(name, votes);
-}
 
 function renderCharacters(filterTag = null) {
   const list = document.getElementById("character-list");
@@ -57,11 +67,15 @@ function renderCharacters(filterTag = null) {
       card.className = "card";
 
       card.innerHTML = `
-        <img src="${c.image}">
+        <img src="${c.image}" alt="${c.name}">
         <h3>${c.name}</h3>
-        <p>${c.series}</p>
-        <div>${c.tags.map(t => `<span class="tag">${t}</span>`).join("")}</div>
-        <p>Votes: ${c.votes}</p>
+        <p><strong>Series:</strong> ${c.series}</p>
+
+        <div class="tags">
+          ${c.tags.map(t => `<span class="tag">${t}</span>`).join("")}
+        </div>
+
+        <p><strong>Votes:</strong> ${c.votes}</p>
         <button onclick="vote('${c.name}')">Vote</button>
       `;
 
@@ -85,6 +99,7 @@ function vote(name) {
   renderCharacters();
 }
 
-loadVotes();
-renderTags();
-renderCharacters();
+
+loadVotes(() => {
+  renderTags();
+  renderCharacters();
