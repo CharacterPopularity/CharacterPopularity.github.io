@@ -5,20 +5,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Character Popularity Rankings</title>
 
-  <!-- Remove any static link/script tags you had before.
-       This small inline script injects the stylesheet and module script
-       with a random query token to bust caches while you develop. -->
+  <!-- Inject CSS + module with a random token to bust cache during development -->
   <script>
     (function() {
       const token = Math.random().toString(36).slice(2,9);
       const cssHref = `style.css?v=${token}`;
       const jsSrc = `script.js?v=${token}`;
-
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = cssHref;
       document.head.appendChild(link);
-
       const mod = document.createElement('script');
       mod.type = 'module';
       mod.src = jsSrc;
@@ -29,18 +25,41 @@
 <body>
   <header>
     <h1 id="site-title">Character Popularity Rankings</h1>
-    <div id="controls">
-      <div id="tag-filter" aria-label="Filter by tag"></div>
-      <button id="reset-filter" style="display:none;">Show all</button>
+
+    <div id="search-area" aria-label="Search and uploader">
+      <input id="search-input" type="search" placeholder="Search name, series, or tags..." aria-label="Search characters">
     </div>
   </header>
 
-  <main>
-    <section id="character-list" aria-live="polite"></section>
-  </main>
+  <div id="layout">
+    <!-- Main column: uploader + grid -->
+    <main id="main-col">
+      <section id="uploader">
+        <h2>Add character</h2>
+        <form id="uploader-form">
+          <input id="input-name" type="text" placeholder="Name" required>
+          <input id="input-series" type="text" placeholder="Series" required>
+          <input id="input-tags" type="text" placeholder="Tags (comma separated)">
+          <input id="input-image" type="url" placeholder="Image URL" required>
+          <div style="display:flex;gap:8px;">
+            <button id="add-btn" type="submit">Add character</button>
+            <button id="clear-btn" type="button">Clear</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="character-list" aria-live="polite"></section>
+    </main>
+
+    <!-- Right column: ranking -->
+    <aside id="right-col" aria-label="Top characters">
+      <h3>Top Characters</h3>
+      <ol id="rank-list"></ol>
+    </aside>
+  </div>
 
   <footer>
-    <small>Built with ❤️</small>
+    <small>Built with <3</small>
   </footer>
 </body>
 </html>
