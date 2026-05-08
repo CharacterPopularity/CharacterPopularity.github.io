@@ -41,6 +41,7 @@ const characters = [
     image: "images/gojo.png"
   }
 ];
+let votedCharacters = JSON.parse(localStorage.getItem("votedCharacters")) || [];
 
 
 /* ---------------------------------------------------------
@@ -67,6 +68,17 @@ function loadVotes(callback) {
    --------------------------------------------------------- */
 
 window.vote = function(name) {
+  // Prevent multiple votes from the same device
+  if (votedCharacters.includes(name)) {
+    alert("You already voted for " + name + " on this device.");
+    return;
+  }
+
+  // Mark this character as voted
+  votedCharacters.push(name);
+  localStorage.setItem("votedCharacters", JSON.stringify(votedCharacters));
+
+  // Update Firebase
   const charRef = ref(db, "characters/" + name);
 
   get(charRef).then(snapshot => {
@@ -74,6 +86,7 @@ window.vote = function(name) {
     set(charRef, currentVotes + 1);
   });
 };
+
 
 
 /* ---------------------------------------------------------
