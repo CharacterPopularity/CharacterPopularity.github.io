@@ -15,11 +15,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-/* ---------------- Sample characters ----------------
-   Replace or extend this array as you like.
-   Tags remain in the data for filtering even though they are hidden on the card.
-*/
-const characters = [
+/* ---------------- Data ---------------- */
+let characters = [
   {
     name: "Megumi",
     series: "Jujutsu Kaisen",
@@ -43,8 +40,21 @@ function loadVotes(callback) {
   const votesRef = ref(db, "characters");
   onValue(votesRef, snapshot => {
     const data = snapshot.val() || {};
+    // update votes for known characters; if new characters exist in DB, merge them
     characters.forEach(c => {
       c.votes = data[c.name] || 0;
+    });
+    // also add any DB-only characters into local array (so rank shows them)
+    Object.keys(data).forEach(name => {
+      if (!characters.find(x => x.name === name)) {
+        characters.push({
+          name,
+          series: "Unknown",
+          tags: [],
+          votes: data[name],
+          image: "" // no image known
+        });
+      }
     });
     callback();
   });
@@ -66,43 +76,54 @@ window.vote = function(name) {
   });
 };
 
-/* ---------------- Render tag buttons ---------------- */
-function renderTags() {
-  const allTags = [...new Set(characters.flatMap(c => c.tags))];
-  const tagDiv = document.getElementById("tag-filter");
-  tagDiv.innerHTML = "";
-
-  allTags.forEach(t => {
-    const btn = document.createElement("button");
-    btn.textContent = t;
-    btn.onclick = () => {
-      renderCharacters(t);
-      document.getElementById("reset-filter").style.display = "inline-block";
+/* ---------------- Render ranking (right column) ---------------- */
+function renderRankList() {
+  const rankList = document.getElementById("rank-list");
+  rankList.innerHTML = "";
+  const top = [...characters].sort((a,b) => b.votes - a.votes).slice(0,8);
+  top.forEach(c => {
+    const li = document.createElement("li");
+    li.textContent = `${c.name} — ${c.votes}`;
+    li.onclick = () => {
+      // filter to that character and scroll into view
+      renderCharacters(c.name);
+      // find card and scroll
+      setTimeout(() => {
+        const card = Array.from(document.querySelectorAll('.card .hero-name'))
+          .find(h => h.textContent === c.name);
+        if (card) card.scrollIntoView({behavior:'smooth', block:'center'});
+      }, 80);
     };
-    tagDiv.appendChild(btn);
+    rankList.appendChild(li);
   });
-
-  const reset = document.getElementById("reset-filter");
-  reset.onclick = () => {
-    renderCharacters();
-    reset.style.display = "none";
-  };
 }
 
 /* ---------------- Render characters (hero-top variant) ---------------- */
-window.renderCharacters = function(filterTag = null) {
+window.renderCharacters = function(filter = null) {
   const list = document.getElementById("character-list");
   list.innerHTML = "";
 
+  // filter can be a tag, name, or series; if null show all
+  const q = filter ? String(filter).toLowerCase() : null;
+
   characters
-    .filter(c => !filterTag || c.tags.includes(filterTag))
+    .filter(c => {
+      if (!q) return true;
+      // match name, series, or tags
+      if (c.name && c.name.toLowerCase().includes(q)) return true;
+      if (c.series && c.series.toLowerCase().includes(q)) return true;
+      if (c.tags && c.tags.some(t => t.toLowerCase().includes(q))) return true;
+      return false;
+    })
     .sort((a, b) => b.votes - a.votes)
     .forEach(c => {
       const card = document.createElement("div");
       card.className = "card hero-top";
-      // keep tags in DOM for filtering but hide them visually via CSS
+
+      // hero uses background-image so the image is a background behind name/tags
+      const imageUrl = c.image || "";
       card.innerHTML = `
-        <div class="hero" style="background-image:url('${c.image}');" aria-hidden="true">
+        <div class="hero" style="background-image:url('${imageUrl}');" aria-hidden="true">
           <h3 class="hero-name">${c.name}</h3>
           <div class="hero-tags">
             ${c.tags.map(t => `<span class="tag">${t}</span>`).join("")}
@@ -127,11 +148,84 @@ window.renderCharacters = function(filterTag = null) {
 
       list.appendChild(card);
     });
+
+  renderRankList();
 };
+
+/* ---------------- Search bar (live) ---------------- */
+function setupSearch() {
+  const input = document.getElementById("search-input");
+  let last = "";
+  input.addEventListener('input', e => {
+    const v = e.target.value.trim();
+    if (v === last) return;
+    last = v;
+    if (v === "") {
+      renderCharacters();
+    } else {
+      renderCharacters(v);
+    }
+  });
+}
+
+/* ---------------- Uploader UI ---------------- */
+function setupUploader() {
+  const form = document.getElementById("uploader-form");
+  const nameIn = document.getElementById("input-name");
+  const seriesIn = document.getElementById("input-series");
+  const tagsIn = document.getElementById("input-tags");
+  const imageIn = document.getElementById("input-image");
+  const clearBtn = document.getElementById("clear-btn");
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const name = nameIn.value.trim();
+    const series = seriesIn.value.trim() || "Unknown";
+    const tags = tagsIn.value.split(',').map(t => t.trim()).filter(Boolean);
+    const image = imageIn.value.trim();
+
+    if (!name || !image) {
+      alert("Please provide at least a name and image URL.");
+      return;
+    }
+
+    // prevent duplicate names
+    if (characters.find(c => c.name.toLowerCase() === name.toLowerCase())) {
+      alert("A character with that name already exists.");
+      return;
+    }
+
+    const newChar = { name, series, tags, votes: 0, image };
+    characters.push(newChar);
+
+    // write initial votes to Firebase (0)
+    const charRef = ref(db, "characters/" + name);
+    set(charRef, 0).then(() => {
+      // re-render
+      renderCharacters();
+      // clear form
+      nameIn.value = "";
+      seriesIn.value = "";
+      tagsIn.value = "";
+      imageIn.value = "";
+    }).catch(err => {
+      console.error(err);
+      alert("Failed to save to database. Character added locally only.");
+      renderCharacters();
+    });
+  });
+
+  clearBtn.addEventListener('click', () => {
+    nameIn.value = "";
+    seriesIn.value = "";
+    tagsIn.value = "";
+    imageIn.value = "";
+  });
+}
 
 /* ---------------- Start app ---------------- */
 loadVotes(() => {
-  renderTags();
+  setupSearch();
+  setupUploader();
   renderCharacters();
 });
-
