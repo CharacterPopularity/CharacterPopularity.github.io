@@ -1,22 +1,20 @@
 :root{
   --card-w:150px;
-  --card-h:250px;
-  --hero-h:150px;
+  --card-h:270px;    /* increased total card height */
+  --hero-h:190px;    /* larger hero area so more image shows */
   --radius:14px;
   --accent:#ff6b6b;
   --bg:#0f0f10;
   --muted:rgba(255,255,255,0.08);
 }
 
-/* Page layout */
+/* Reset & page */
 *{box-sizing:border-box}
 body{
   margin:0;
   font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;
   background:linear-gradient(180deg,#0b0b0c,#0f1112);
   color:#eaeaea;
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
   padding:18px;
 }
 header{
@@ -26,12 +24,28 @@ header{
   margin-bottom:12px;
 }
 #site-title{margin:0;font-size:1.15rem}
-#controls{margin-left:auto;display:flex;gap:8px;align-items:center}
-#tag-filter button{
-  background:transparent;border:1px solid rgba(255,255,255,0.06);
-  color:#ddd;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:0.85rem;
+#search-area{margin-left:auto}
+#search-input{
+  padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);
+  background:rgba(255,255,255,0.02);color:#fff;width:320px;
 }
-#reset-filter{background:var(--accent);border:none;color:#fff;padding:6px 8px;border-radius:8px;cursor:pointer}
+
+/* Layout */
+#layout{
+  display:flex;
+  gap:18px;
+  align-items:flex-start;
+}
+
+/* Main column */
+#main-col{flex:1;min-width:320px}
+
+/* Uploader */
+#uploader{margin-bottom:12px}
+#uploader h2{margin:0 0 8px 0;font-size:1rem}
+#uploader-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+#uploader-form input{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:#fff}
+#uploader-form button{padding:8px 10px;border-radius:8px;border:none;background:var(--accent);color:#fff;cursor:pointer}
 
 /* Grid */
 #character-list{
@@ -137,10 +151,25 @@ header{
   padding:6px 8px;border-radius:8px;border:none;background:var(--accent);color:#fff;cursor:pointer;
 }
 
+/* Right column (ranking) */
+#right-col{
+  width:220px;
+  background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius:12px;
+  padding:12px;
+  box-shadow:0 8px 20px rgba(0,0,0,0.45);
+  color:#fff;
+  height:fit-content;
+}
+#right-col h3{margin:0 0 8px 0;font-size:1rem}
+#rank-list{padding-left:16px;margin:0}
+#rank-list li{margin:8px 0;cursor:pointer}
+#rank-list li:hover{color:var(--accent)}
+
 /* small screens */
-@media (max-width:420px){
-  :root{--card-w:130px;--card-h:220px;--hero-h:130px}
-  #character-list{gap:10px}
+@media (max-width:920px){
+  #layout{flex-direction:column}
+  #right-col{width:100%}
 }
 
 /* Utility: visually-hidden but accessible (for screen readers) */
