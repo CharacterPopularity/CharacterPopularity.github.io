@@ -107,20 +107,20 @@ function renderTags() {
    RENDER CHARACTER CARDS
    --------------------------------------------------------- */
 
-window.renderCharacters = function(filterTag = null) {
+// use class "hero-top" on the card
+window.renderCharactersHeroTop = function(filterTag = null) {
   const list = document.getElementById("character-list");
   list.innerHTML = "";
 
   characters
     .filter(c => !filterTag || c.tags.includes(filterTag))
-    .sort((a, b) => b.votes - a.votes)
+    .sort((a,b) => b.votes - a.votes)
     .forEach(c => {
       const card = document.createElement("div");
-      card.className = "card";
+      card.className = "card hero-top";
 
-      // hero uses background-image so the image is a background behind name/tags
       card.innerHTML = `
-        <div class="hero" style="background-image: url('${c.image}');">
+        <div class="hero" style="background-image:url('${c.image}');">
           <h3 class="hero-name">${c.name}</h3>
           <div class="hero-tags">
             ${c.tags.map(t => `<span class="tag">${t}</span>`).join("")}
@@ -139,6 +139,7 @@ window.renderCharacters = function(filterTag = null) {
       list.appendChild(card);
     });
 };
+
 
 
 
