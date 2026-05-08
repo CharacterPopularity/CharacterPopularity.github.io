@@ -20,14 +20,16 @@
 </body>
 </html>
 
-.card img {
-  width: 100%;
-  height: 150px;
-  object-fit: cover;
-  object-position: top;
-  border-radius: 10px;
-  display: block;
+.card {
+  min-height: 250px;
 }
 
 
-
+.card img {
+  width: 100% !important;
+  height: 150px !important;
+  display: block !important;
+  object-fit: cover !important;
+  object-position: top !important;
+  background: red !important; /* TEMPORARY DEBUG */
+}
