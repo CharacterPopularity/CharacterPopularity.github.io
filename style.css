@@ -20,6 +20,15 @@
 </body>
 </html>
 
+#character-list {
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  align-items:flex-start;
+  justify-content:flex-start;
+  padding:12px;
+}
+
 .card {
   background-color: #111;          /* dark base for contrast */
   border-radius: 10px;             /* rounded corners */
