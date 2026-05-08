@@ -23,7 +23,6 @@
 .card img {
   width: 50%;
   height: 120px;
-  object-fit: cover;
   object-position: top;
   border-radius: 10px;
   display: block;
