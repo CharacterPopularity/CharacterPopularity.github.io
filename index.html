@@ -24,7 +24,9 @@
 </head>
 <body>
   <header>
-    <h1 id="site-title">Character Popularity Rankings</h1>
+    <div id="left-head">
+      <h1 id="site-title">Character Popularity Rankings</h1>
+    </div>
 
     <div id="search-area" aria-label="Search and filters">
       <input id="search-input" type="search" placeholder="Search name, series, or tags..." aria-label="Search characters" autocomplete="off">
@@ -33,10 +35,35 @@
         <button id="clear-filters" style="padding:6px 10px;border-radius:8px;border:none;background:#444;color:#fff;cursor:pointer;">Clear filters</button>
       </div>
     </div>
+
+    <div id="admin-area" aria-label="Admin">
+      <button id="admin-toggle-btn" title="Admin">Admin</button>
+      <div id="admin-panel" hidden>
+        <input id="admin-password" type="password" placeholder="Enter admin password" aria-label="Admin password">
+        <button id="admin-login">Enter</button>
+        <button id="admin-logout" hidden>Exit Admin</button>
+        <div id="admin-status" aria-live="polite"></div>
+      </div>
+    </div>
   </header>
 
   <div id="layout">
     <main id="main-col">
+      <!-- Uploader is visible only in admin mode -->
+      <section id="uploader" hidden>
+        <h2>Add character (admin)</h2>
+        <form id="uploader-form">
+          <input id="input-name" type="text" placeholder="Name" required>
+          <input id="input-series" type="text" placeholder="Series" required>
+          <input id="input-tags" type="text" placeholder="Tags (comma separated)">
+          <input id="input-image" type="url" placeholder="Image URL" required>
+          <div style="display:flex;gap:8px;">
+            <button id="add-btn" type="submit">Add character</button>
+            <button id="clear-btn" type="button">Clear</button>
+          </div>
+        </form>
+      </section>
+
       <section id="character-list" aria-live="polite"></section>
     </main>
 
@@ -47,7 +74,7 @@
   </div>
 
   <footer>
-    <small>Made by Carly T <3</small>
+    <small>Made by Carly Thompson <3</small>
   </footer>
 </body>
 </html>
