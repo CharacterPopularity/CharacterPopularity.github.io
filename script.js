@@ -31,7 +31,7 @@ const characters = [
     series: "Jujutsu Kaisen",
     tags: ["urchin", "daddy issues", "deuterogonist"],
     votes: 0,
-    image: "https://i.pinimg.com/1200x/09/51/0f/09510f6ef14ef55802bd7463c622aef2.jpg"
+    image: "https://i.pinimg.com/736x/47/58/18/4758184d6811b6e1934adcbb5b5198a9.jpg"
   },
   {
     name: "Gojo Satoru",
