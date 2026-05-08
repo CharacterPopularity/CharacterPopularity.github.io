@@ -1,260 +1,152 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Character Popularity Rankings</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
+:root{
+  --card-w:150px;
+  --card-h:250px;
+  --hero-h:150px;
+  --radius:14px;
+  --accent:#ff6b6b;
+  --bg:#0f0f10;
+  --muted:rgba(255,255,255,0.08);
+}
 
-<header>
-  <h1>Character Popularity Rankings</h1>
-  <p>Vote for your favorite characters and explore by tags</p>
-</header>
+/* Page layout */
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;
+  background:linear-gradient(180deg,#0b0b0c,#0f1112);
+  color:#eaeaea;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  padding:18px;
+}
+header{
+  display:flex;
+  align-items:center;
+  gap:18px;
+  margin-bottom:12px;
+}
+#site-title{margin:0;font-size:1.15rem}
+#controls{margin-left:auto;display:flex;gap:8px;align-items:center}
+#tag-filter button{
+  background:transparent;border:1px solid rgba(255,255,255,0.06);
+  color:#ddd;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:0.85rem;
+}
+#reset-filter{background:var(--accent);border:none;color:#fff;padding:6px 8px;border-radius:8px;cursor:pointer}
 
-<div id="tag-filter"></div>
-
-<div id="character-list"></div>
-
-<script src="script.js"></script>
-</body>
-</html>
-
-#character-list {
+/* Grid */
+#character-list{
   display:flex;
   flex-wrap:wrap;
   gap:12px;
   align-items:flex-start;
-  justify-content:flex-start;
-  padding:12px;
+  padding:6px;
 }
 
-.card {
-  background-color: #111;          /* dark base for contrast */
-  border-radius: 10px;             /* rounded corners */
-  overflow: hidden;                /* keeps image corners rounded */
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-  color: #fff;
-  text-align: center;
-  padding: 10px;
-  position: relative;
-  
-  min-height: 250px;
-  min-width: 100px;
+/* Card base (hero-top variant) */
+.card.hero-top{
+  width:var(--card-w);
+  height:var(--card-h);
+  background:var(--bg);
+  border-radius:var(--radius);
+  overflow:hidden;
+  box-shadow:0 8px 22px rgba(0,0,0,0.55);
+  color:#fff;
+  display:flex;
+  flex-direction:column;
+  margin:6px;
+  position:relative;
+  transition:transform .14s ease, box-shadow .14s ease;
 }
 
-
-.card img {
-  width: 150px !important;
-  height: 250px !important;
-  display: block !important;
-  object-fit: cover !important;
-  object-position: top !important;
-  border-radius: 10px 10px 10px 10px;
-}
-.card h3 {
-  position: absolute;
-  top: 35px;
-  left: 0;
-  right: 0;
-  font-size: 1.4em;
-  font-weight: 700;
-  color: #fff;
-  text-shadow: 0 2px 6px rgba(0,0,0,0.7);
+/* hover */
+.card.hero-top:hover{
+  transform:translateY(-6px);
+  box-shadow:0 18px 36px rgba(0,0,0,0.6);
 }
 
-.tags {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 10px;
+/* Hero area (image as background) */
+.card.hero-top .hero{
+  width:100%;
+  height:var(--hero-h);
+  background-size:cover;
+  background-position:center;
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+  padding:8px;
+  box-sizing:border-box;
 }
 
-.tag {
-  background-color: rgba(255,255,255,0.1);
-  border-radius: 12px;
-  padding: 4px 10px;
-  font-size: 0.85em;
-  color: #ddd;
-}
-/* Card container */
-.card {
-  position: relative;
-  background: #0f0f10;
-  border-radius: 18px;
-  overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.45);
-  color: #fff;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Top Hero Variant */
-.card.hero-top {
-  width: 150px;
-  height: 250px;
-  background: #0f0f10;
-  border-radius: 14px;
-  overflow: hidden;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.45);
-  color: #fff;
-  display: flex;
-  flex-direction: column;
-  margin: 10px;
-  position: relative;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-}
-
-/* hero area (top portion only) */
-.card.hero-top .hero {
-  width: 100%;
-  height: 150px;
-  background-size: cover;
-  background-position: center;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 8px;
-  box-sizing: border-box;
-}
-
-/* overlay for contrast */
-.card.hero-top .hero::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0.08));
-  z-index: 0;
-}
-
-/* name and tags on top of hero */
-.card.hero-top .hero-name {
-  position: relative;
-  z-index: 2;
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: #fff;
-  text-shadow: 0 6px 14px rgba(0,0,0,0.6);
-  line-height: 1;
-}
-.card.hero-top .hero-tags { position: relative; z-index:2; display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
-.card.hero-top .tag { background: rgba(255,255,255,0.08); color:#eaeaea; padding:3px 7px; border-radius:999px; font-size:0.68rem; }
-
-/* bottom body */
-.card.hero-top .card-body { padding:8px; display:flex; flex-direction:column; gap:6px; justify-content:space-between; flex:1; font-size:0.78rem; }
-
-
-/* Tag pill */
-.card .tag {
-  background: rgba(255,255,255,0.08);
-  color: #eaeaea;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 0.78rem;
-}
-
-/* Card body (below the hero) */
-.card .card-body {
-  padding: 12px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-}
-
-/* Small responsive tweaks */
-@media (max-width: 150px) {
-  .card .hero { height: 160px; }
-  .card .hero-name { font-size: 1rem; }
-}
-/* Card fixed size */
-.card {
-  width: 150px;
-  height: 250px;
-  background: #0f0f10;
-  border-radius: 14px;
-  overflow: hidden;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.45);
-  color: #fff;
-  display: flex;
-  flex-direction: column;
-  margin: 10px;
-  position: relative;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-}
-
-/* Hero area: image as background (top portion) */
-.card .hero {
-  width: 100%;
-  height: 150px;                 /* top image area height */
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;     /* push name/tags to bottom of hero */
-  padding: 8px;
-  box-sizing: border-box;
-}
-
-/* subtle overlay for readability */
-.card .hero::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0.08));
-  z-index: 0;
+/* overlay for contrast behind text */
+.card.hero-top .hero::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(to top, rgba(0,0,0,0.62), rgba(0,0,0,0.08));
+  z-index:0;
 }
 
 /* Name overlay */
-.card .hero-name {
-  position: relative;
-  z-index: 2;
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: #fff;
-  text-shadow: 0 6px 14px rgba(0,0,0,0.6);
-  line-height: 1;
+.card.hero-top .hero-name{
+  position:relative;
+  z-index:2;
+  margin:0;
+  font-size:0.95rem;
+  font-weight:800;
+  color:#fff;
+  text-shadow:0 6px 14px rgba(0,0,0,0.6);
+  line-height:1;
 }
 
-/* Tags inside hero */
-.card .hero-tags {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 6px;
+/* Tags are present in DOM but visually hidden on the card.
+   They remain available for filtering and accessibility. */
+.card.hero-top .hero-tags{
+  position:relative;
+  z-index:2;
+  display:none; /* hidden visually */
+  gap:6px;
+  flex-wrap:wrap;
+  margin-top:6px;
 }
 
-.card .tag {
-  background: rgba(255,255,255,0.08);
-  color: #eaeaea;
-  padding: 3px 7px;
-  border-radius: 999px;
-  font-size: 0.68rem;
+/* Tag pill (still used by filter UI generation) */
+.tag{
+  background:var(--muted);
+  color:#eaeaea;
+  padding:3px 7px;
+  border-radius:999px;
+  font-size:0.68rem;
 }
 
 /* Card body (bottom area) */
-.card .card-body {
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  justify-content: space-between;
-  flex: 1;
-  font-size: 0.78rem;
+.card.hero-top .card-body{
+  padding:8px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  justify-content:space-between;
+  flex:1;
+  font-size:0.78rem;
 }
 
-/* Small responsive tweak: scale cards on very small screens */
-@media (max-width: 150px) {
-  .card { transform: scale(0.9); transform-origin: top left; }
+/* small elements */
+.card .series{margin:0;font-size:0.78rem;color:#dcdcdc}
+.card .votes{margin:0;font-weight:700;color:#fff}
+.card button.vote-btn{
+  padding:6px 8px;border-radius:8px;border:none;background:var(--accent);color:#fff;cursor:pointer;
 }
 
+/* small screens */
+@media (max-width:420px){
+  :root{--card-w:130px;--card-h:220px;--hero-h:130px}
+  #character-list{gap:10px}
+}
+
+/* Utility: visually-hidden but accessible (for screen readers) */
+.visually-hidden{
+  position:absolute!important;
+  height:1px;width:1px;
+  overflow:hidden;clip:rect(1px,1px,1px,1px);
+  white-space:nowrap;border:0;padding:0;margin:-1px;
 }
