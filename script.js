@@ -1,17 +1,17 @@
 const characters = [
   {
-    name: "Megumin",
+    name: "Megumi Fushiguro",
     series: "Konosuba",
     tags: ["mage", "explosion", "chaotic"],
     votes: 0,
-    image: "https://via.placeholder.com/200"
+    image: "https://www.pinterest.com/pin/711005859946662848/"
   },
   {
-    name: "Gojo Satoru",
+    name: "Satoru Gojo",
     series: "Jujutsu Kaisen",
     tags: ["teacher", "OP", "white hair"],
     votes: 0,
-    image: "https://via.placeholder.com/200"
+    image: "https://fr.pinterest.com/pin/8303580557245603/"
   }
 ];
 
