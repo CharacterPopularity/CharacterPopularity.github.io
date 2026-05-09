@@ -1,6 +1,6 @@
 // script.js (module)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getDatabase, ref, get, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 
 /* ---------------- Firebase config ---------------- */
 const firebaseConfig = {
@@ -15,39 +15,35 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-/* ---------------- Default sample characters (used only if DB empty) ---------------- */
+/* ---------------- Default sample characters ---------------- */
 const DEFAULT_CHARACTERS = [
   {
     name: "Gojo Satoru",
     series: "Jujutsu Kaisen",
     tags: ["teacher", "OP", "white hair"],
     votes: 17,
-    image: "https://i.pinimg.com/originals/b4/27/c3/b427c399f12289a23dd1caa82c40530f.jpg"
+    image: "https://i.pinimg.com/originals/b4/27/c3/b427c399f12289a23dd1caa82c40530f.jpg",
+    fandom: "https://jujutsu-kaisen.fandom.com/wiki/Satoru_Gojo"
   },
   {
     name: "Yuji Itadori",
     series: "Jujutsu Kaisen",
     tags: ["protagonist", "energetic", "brave"],
     votes: 3,
-    image: "https://i.pinimg.com/564x/2b/2f/6b/2b2f6b3b7b3b6f6b3b6f6b3b.jpg"
+    image: "https://i.pinimg.com/564x/2b/2f/6b/2b2f6b3b7b3b6f6b3b6f6b3b.jpg",
+    fandom: "https://jujutsu-kaisen.fandom.com/wiki/Yuji_Itadori"
   }
 ];
 
-/* ---------------- Local cache of characters (mirrors DB) ----------------
-   characters is an array of objects: {name,series,tags,votes,image}
-*/
+/* ---------------- Local cache of characters ---------------- */
 let characters = [];
 
-/* ---------------- Vote lock storage ----------------
-   Per-character timestamps in localStorage as:
-   vote_ts_<CharacterName> = <ms since epoch>
-*/
+/* ---------------- Vote lock storage ---------------- */
 let votedTimestamps = JSON.parse(localStorage.getItem("votedTimestamps") || "{}");
 
 /* ---------------- Helpers ---------------- */
 const ADMIN_PASSWORD = "SnowyOwl";
 function keyForName(name) {
-  // use encodeURIComponent to make a safe key for Firebase
   return encodeURIComponent(name);
 }
 
@@ -57,14 +53,14 @@ function ensureDefaultCharacters(callback) {
   get(dataRef).then(snapshot => {
     const val = snapshot.val();
     if (!val || Object.keys(val).length === 0) {
-      // write defaults
       const updates = {};
       DEFAULT_CHARACTERS.forEach(c => {
         updates[keyForName(c.name)] = {
           series: c.series,
           tags: c.tags,
           votes: c.votes,
-          image: c.image
+          image: c.image,
+          fandom: c.fandom || ""
         };
       });
       set(dataRef, updates).then(() => callback()).catch(err => {
@@ -92,10 +88,10 @@ function loadCharactersRealtime(callback) {
         series: obj.series || "Unknown",
         tags: obj.tags || [],
         votes: typeof obj.votes === "number" ? obj.votes : Number(obj.votes || 0),
-        image: obj.image || ""
+        image: obj.image || "",
+        fandom: obj.fandom || ""
       };
     });
-    // keep local order stable by sorting by votes desc
     characters.sort((a,b) => b.votes - a.votes);
     callback();
   }, err => {
@@ -114,17 +110,16 @@ window.vote = function(name) {
 
     if (last && (now - last) < DAY) {
       const remainingMs = DAY - (now - last);
-      const hours = Math.ceil(remainingMs / (60*60*1000));
-      alert(`You can vote for ${name} again in about ${hours} hour(s).`);
+      const hours = Math.floor(remainingMs / (60*60*1000));
+      const mins = Math.ceil((remainingMs % (60*60*1000)) / (60*1000));
+      alert(`You can vote for ${name} again in about ${hours} hour(s) and ${mins} minute(s).`);
       return;
     }
 
-    // mark vote timestamp locally
     localStorage.setItem(key, String(now));
     votedTimestamps[name] = now;
     localStorage.setItem("votedTimestamps", JSON.stringify(votedTimestamps));
 
-    // Update Firebase: increment votes atomically by reading then setting
     const charRef = ref(db, "charactersData/" + keyForName(name) + "/votes");
     get(charRef).then(snapshot => {
       let currentVotes = snapshot.exists() ? Number(snapshot.val()) : 0;
@@ -144,9 +139,7 @@ window.deleteCharacter = function(name) {
   if (!confirm(`Delete "${name}" permanently? This cannot be undone.`)) return;
   const key = keyForName(name);
   const charRef = ref(db, "charactersData/" + key);
-  // remove from DB
   set(charRef, null).then(() => {
-    // local characters will update via realtime listener
     console.log("Deleted", name);
   }).catch(err => {
     console.error("Delete failed:", err);
@@ -170,15 +163,75 @@ window.setVotesAdmin = function(name, newVotes) {
   });
 };
 
+/* ---------------- Admin-only: save tags & image & fandom & name edits ---------------- */
+window.saveAdminEdits = function(originalName, newName, tagsCsv, imageUrl, fandomUrl) {
+  const nameTrim = String(newName || "").trim();
+  if (!nameTrim) {
+    alert("Name cannot be empty.");
+    return;
+  }
+  const tags = String(tagsCsv || "").split(',').map(t => t.trim()).filter(Boolean);
+  const updates = {
+    series: null, // series not edited here; keep existing unless admin changes via uploader or separate control
+    tags,
+    image: imageUrl || "",
+    fandom: fandomUrl || ""
+  };
+
+  const oldKey = keyForName(originalName);
+  const newKey = keyForName(nameTrim);
+
+  const charRefOld = ref(db, "charactersData/" + oldKey);
+  get(charRefOld).then(snapshot => {
+    if (!snapshot.exists()) {
+      alert("Original character not found.");
+      return;
+    }
+    const base = snapshot.val() || {};
+    // merge base with updates and possibly new name
+    const merged = Object.assign({}, base, {
+      tags: updates.tags,
+      image: updates.image,
+      fandom: updates.fandom
+    });
+
+    // If name changed, write to new key and delete old key
+    if (oldKey !== newKey) {
+      const newRef = ref(db, "charactersData/" + newKey);
+      set(newRef, merged).then(() => {
+        // remove old
+        set(charRefOld, null).then(() => {
+          console.log("Renamed", originalName, "to", nameTrim);
+        }).catch(err => {
+          console.error("Failed to remove old key after rename:", err);
+        });
+      }).catch(err => {
+        console.error("Failed to write new key during rename:", err);
+        alert("Failed to rename character.");
+      });
+    } else {
+      // same key: just set merged object (preserve votes & series if present)
+      const mergedWithSeries = Object.assign({}, merged, { series: base.series || merged.series, votes: base.votes || merged.votes || 0 });
+      set(charRefOld, mergedWithSeries).then(() => {
+        console.log("Saved edits for", originalName);
+      }).catch(err => {
+        console.error("Failed to save edits:", err);
+        alert("Failed to save edits.");
+      });
+    }
+  }).catch(err => {
+    console.error("Failed to read original character:", err);
+    alert("Failed to save edits.");
+  });
+};
+
 /* ---------------- Utility: unique sorted tags ---------------- */
 function getAllTags() {
   const all = [...new Set(characters.flatMap(c => c.tags || []))];
   return all.sort((a,b) => a.localeCompare(b, undefined, {sensitivity:'base'}));
 }
 
-/* ---------------- Render ranking (right column) ----------------
-   Accepts optional filter string so ranking respects current filter.
-*/
+/* ---------------- Render ranking (right column) ---------------- */
 function renderRankList(filter = null) {
   const rankList = document.getElementById("rank-list");
   if (!rankList) return;
@@ -196,7 +249,6 @@ function renderRankList(filter = null) {
     const li = document.createElement("li");
     li.textContent = `${c.name} — ${c.votes}`;
     li.onclick = () => {
-      // filter to that character and scroll into view
       renderCharacters(c.name);
       setTimeout(() => {
         const card = Array.from(document.querySelectorAll('.card .hero-name'))
@@ -208,9 +260,7 @@ function renderRankList(filter = null) {
   });
 }
 
-/* ---------------- Render characters (hero-top variant) ----------------
-   Admin controls (delete / vote editor) are shown only when sessionStorage.isAdmin === "1"
-*/
+/* ---------------- Render characters (hero-top variant) ---------------- */
 window.renderCharacters = function(filter = null) {
   const list = document.getElementById("character-list");
   if (!list) return;
@@ -232,49 +282,186 @@ window.renderCharacters = function(filter = null) {
       const card = document.createElement("div");
       card.className = "card hero-top";
 
-      const imageUrl = c.image || "";
-      // admin controls: delete + vote editor
-      const adminControlsHtml = isAdmin ? `
-        <div class="admin-controls">
-          <button class="delete" onclick="deleteCharacter('${c.name.replace(/'/g,"\\'")}')">Delete</button>
-          <div class="vote-editor">
-            <input type="number" id="vote-input-${encodeURIComponent(c.name)}" value="${c.votes}" min="0" />
-            <button class="save" onclick="(function(){ const v = document.getElementById('vote-input-${encodeURIComponent(c.name)}').value; setVotesAdmin('${c.name.replace(/'/g,"\\'")}', v); })()">Save</button>
-          </div>
-        </div>
-      ` : "";
+      // cooldown badge
+      const cooldownBadge = document.createElement("div");
+      cooldownBadge.className = "cooldown-badge";
+      const remaining = getVoteRemaining(c.name);
+      cooldownBadge.textContent = remaining ? remaining : "Ready";
+      card.appendChild(cooldownBadge);
 
-      card.innerHTML = `
-        ${adminControlsHtml}
-        <div class="hero" style="background-image:url('${imageUrl}');" aria-hidden="true">
-          <h3 class="hero-name">${c.name}</h3>
-          <div class="hero-tags">
-            ${c.tags.map(t => `<span class="tag">${t}</span>`).join("")}
-          </div>
-        </div>
+      // admin controls (stacked)
+      if (isAdmin) {
+        const adminControls = document.createElement("div");
+        adminControls.className = "admin-controls";
 
-        <div class="card-body">
-          <p class="series"><strong>Series:</strong> ${c.series}</p>
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <p class="votes" style="margin:0;"><strong>Votes:</strong> ${c.votes}</p>
-            <button class="vote-btn" onclick="vote('${c.name.replace(/'/g,"\\'")}')">Vote</button>
-          </div>
-        </div>
-      `;
+        // vote editor row
+        const voteRow = document.createElement("div");
+        voteRow.className = "row vote-editor";
+        const voteInput = document.createElement("input");
+        voteInput.type = "number";
+        voteInput.min = "0";
+        voteInput.value = c.votes;
+        voteInput.id = `vote-input-${encodeURIComponent(c.name)}`;
+        const saveVoteBtn = document.createElement("button");
+        saveVoteBtn.className = "save";
+        saveVoteBtn.textContent = "Save";
+        saveVoteBtn.onclick = () => setVotesAdmin(c.name, voteInput.value);
+        voteRow.appendChild(voteInput);
+        voteRow.appendChild(saveVoteBtn);
+        adminControls.appendChild(voteRow);
 
-      // accessibility: expose name and tags to screen readers
+        // edit row: name, tags, image, fandom
+        const editRow = document.createElement("div");
+        editRow.className = "row edit-editor";
+        const nameInput = document.createElement("input");
+        nameInput.type = "text";
+        nameInput.value = c.name;
+        nameInput.style.width = "120px";
+        nameInput.id = `name-input-${encodeURIComponent(c.name)}`;
+
+        const tagsInput = document.createElement("input");
+        tagsInput.type = "text";
+        tagsInput.value = (c.tags || []).join(", ");
+        tagsInput.placeholder = "tags,comma,separated";
+        tagsInput.id = `tags-input-${encodeURIComponent(c.name)}`;
+
+        const imageInput = document.createElement("input");
+        imageInput.type = "url";
+        imageInput.value = c.image || "";
+        imageInput.placeholder = "Image URL";
+        imageInput.id = `image-input-${encodeURIComponent(c.name)}`;
+
+        const fandomInput = document.createElement("input");
+        fandomInput.type = "url";
+        fandomInput.value = c.fandom || "";
+        fandomInput.placeholder = "Fandom URL";
+        fandomInput.id = `fandom-input-${encodeURIComponent(c.name)}`;
+
+        const saveEditsBtn = document.createElement("button");
+        saveEditsBtn.className = "save";
+        saveEditsBtn.textContent = "Save";
+        saveEditsBtn.onclick = () => {
+          const newName = nameInput.value.trim();
+          const tagsCsv = tagsInput.value;
+          const img = imageInput.value.trim();
+          const fandom = fandomInput.value.trim();
+          saveAdminEdits(c.name, newName, tagsCsv, img, fandom);
+        };
+
+        // stack inputs vertically inside editRow for readability
+        const editCol = document.createElement("div");
+        editCol.style.display = "flex";
+        editCol.style.flexDirection = "column";
+        editCol.style.gap = "6px";
+        editCol.appendChild(nameInput);
+        editCol.appendChild(tagsInput);
+        editCol.appendChild(imageInput);
+        editCol.appendChild(fandomInput);
+        editCol.appendChild(saveEditsBtn);
+
+        adminControls.appendChild(editCol);
+
+        // delete row (below editors)
+        const delRow = document.createElement("div");
+        delRow.className = "row";
+        const delBtn = document.createElement("button");
+        delBtn.className = "delete";
+        delBtn.textContent = "Delete";
+        delBtn.onclick = () => deleteCharacter(c.name);
+        delRow.appendChild(delBtn);
+        adminControls.appendChild(delRow);
+
+        card.appendChild(adminControls);
+      }
+
+      // clickable link overlay (if fandom exists)
+      if (c.fandom && c.fandom.trim()) {
+        const a = document.createElement("a");
+        a.className = "card-link";
+        a.href = c.fandom;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        card.appendChild(a);
+      }
+
+      // hero area
+      const hero = document.createElement("div");
+      hero.className = "hero";
+      hero.style.backgroundImage = `url('${c.image || ""}')`;
+      hero.setAttribute("aria-hidden", "true");
+
+      const h3 = document.createElement("h3");
+      h3.className = "hero-name";
+      h3.textContent = c.name;
+      hero.appendChild(h3);
+
+      const heroTags = document.createElement("div");
+      heroTags.className = "hero-tags";
+      heroTags.innerHTML = (c.tags || []).map(t => `<span class="tag">${t}</span>`).join("");
+      hero.appendChild(heroTags);
+
+      card.appendChild(hero);
+
+      // card body
+      const body = document.createElement("div");
+      body.className = "card-body";
+
+      const seriesP = document.createElement("p");
+      seriesP.className = "series";
+      seriesP.innerHTML = `<strong>Series:</strong> ${c.series}`;
+      body.appendChild(seriesP);
+
+      const bottomRow = document.createElement("div");
+      bottomRow.style.display = "flex";
+      bottomRow.style.justifyContent = "space-between";
+      bottomRow.style.alignItems = "center";
+
+      const votesP = document.createElement("p");
+      votesP.className = "votes";
+      votesP.style.margin = "0";
+      votesP.innerHTML = `<strong>Votes:</strong> ${c.votes}`;
+      bottomRow.appendChild(votesP);
+
+      const voteBtn = document.createElement("button");
+      voteBtn.className = "vote-btn";
+      voteBtn.textContent = "Vote";
+      voteBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        vote(c.name);
+      };
+      bottomRow.appendChild(voteBtn);
+
+      body.appendChild(bottomRow);
+      card.appendChild(body);
+
+      // accessibility summary
       const sr = document.createElement('div');
       sr.className = 'visually-hidden';
       sr.setAttribute('aria-hidden','false');
       sr.innerText = `${c.name}. Series: ${c.series}. Tags: ${c.tags.join(', ')}. Votes: ${c.votes}.`;
       card.appendChild(sr);
 
+      // clicking the card (if no fandom link) does nothing; if fandom link exists, anchor overlay handles it
       list.appendChild(card);
     });
 
-  // update rank list with same filter
   renderRankList(filter);
 };
+
+/* ---------------- get vote remaining string ---------------- */
+function getVoteRemaining(name) {
+  const key = `vote_ts_${name}`;
+  const last = parseInt(localStorage.getItem(key) || "0", 10);
+  if (!last) return null;
+  const now = Date.now();
+  const DAY = 24 * 60 * 60 * 1000;
+  if ((now - last) >= DAY) return null;
+  const remainingMs = DAY - (now - last);
+  const hours = Math.floor(remainingMs / (60*60*1000));
+  const mins = Math.ceil((remainingMs % (60*60*1000)) / (60*1000));
+  if (hours <= 0) return `${mins}m`;
+  return `${hours}h ${mins}m`;
+}
 
 /* ---------------- Search bar + tag suggestions ---------------- */
 function setupSearchAndTags() {
@@ -322,7 +509,6 @@ function setupSearchAndTags() {
     }
   });
 
-  // hide suggestions when clicking outside
   document.addEventListener('click', (ev) => {
     const target = ev.target;
     if (!document.getElementById('search-area').contains(target)) {
@@ -330,7 +516,6 @@ function setupSearchAndTags() {
     }
   });
 
-  // Clear filters button
   clearBtn.onclick = () => {
     input.value = "";
     renderCharacters();
@@ -338,7 +523,6 @@ function setupSearchAndTags() {
     suggestions.hidden = true;
   };
 
-  // initially hide clear button
   clearBtn.style.display = "none";
 }
 
@@ -349,6 +533,7 @@ function setupUploader() {
   const seriesIn = document.getElementById("input-series");
   const tagsIn = document.getElementById("input-tags");
   const imageIn = document.getElementById("input-image");
+  const fandomIn = document.getElementById("input-fandom");
   const clearBtn = document.getElementById("clear-btn");
 
   form.addEventListener('submit', e => {
@@ -357,6 +542,7 @@ function setupUploader() {
     const series = seriesIn.value.trim() || "Unknown";
     const tags = tagsIn.value.split(',').map(t => t.trim()).filter(Boolean);
     const image = imageIn.value.trim();
+    const fandom = fandomIn.value.trim();
 
     if (!name || !image) {
       alert("Please provide at least a name and image URL.");
@@ -368,14 +554,14 @@ function setupUploader() {
       return;
     }
 
-    const newChar = { series, tags, votes: 0, image };
+    const newChar = { series, tags, votes: 0, image, fandom };
     const charRef = ref(db, "charactersData/" + keyForName(name));
     set(charRef, newChar).then(() => {
-      // realtime listener will pick up the new character
       nameIn.value = "";
       seriesIn.value = "";
       tagsIn.value = "";
       imageIn.value = "";
+      fandomIn.value = "";
     }).catch(err => {
       console.error(err);
       alert("Failed to save to database. Character not added.");
@@ -387,6 +573,7 @@ function setupUploader() {
     seriesIn.value = "";
     tagsIn.value = "";
     imageIn.value = "";
+    fandomIn.value = "";
   });
 }
 
@@ -419,6 +606,7 @@ function setupAdminUI() {
 
   toggleBtn.addEventListener('click', () => {
     adminPanel.hidden = !adminPanel.hidden;
+    if (!adminPanel.hidden) adminPassword.focus();
   });
 
   adminLogin.addEventListener('click', () => {
@@ -427,7 +615,6 @@ function setupAdminUI() {
       setAdminMode(true);
       adminPassword.value = "";
       adminPanel.hidden = true;
-      // re-render to show admin controls
       renderCharacters(document.getElementById('search-input').value || null);
     } else {
       adminStatus.textContent = "Incorrect password";
@@ -440,7 +627,6 @@ function setupAdminUI() {
     renderCharacters(document.getElementById('search-input').value || null);
   });
 
-  // restore admin state if session says so
   if (sessionStorage.getItem("isAdmin") === "1") {
     setAdminMode(true);
   } else {
@@ -455,5 +641,17 @@ ensureDefaultCharacters(() => {
     setupAdminUI();
     setupUploader();
     renderCharacters();
+    // update cooldown badges every minute
+    setInterval(() => {
+      document.querySelectorAll('.cooldown-badge').forEach(b => {
+        const card = b.closest('.card');
+        if (!card) return;
+        const nameEl = card.querySelector('.hero-name');
+        if (!nameEl) return;
+        const name = nameEl.textContent;
+        const rem = getVoteRemaining(name);
+        b.textContent = rem ? rem : "Ready";
+      });
+    }, 60*1000);
   });
 });
