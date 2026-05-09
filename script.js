@@ -1,6 +1,6 @@
 // script.js (module)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+import { getDatabase, ref, get, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 
 /* ---------------- Firebase config ---------------- */
 const firebaseConfig = {
@@ -15,8 +15,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-/* ---------------- Data (Megumin removed) ---------------- */
-let characters = [
+/* ---------------- Default sample characters (used only if DB empty) ---------------- */
+const DEFAULT_CHARACTERS = [
   {
     name: "Gojo Satoru",
     series: "Jujutsu Kaisen",
@@ -33,34 +33,73 @@ let characters = [
   }
 ];
 
+/* ---------------- Local cache of characters (mirrors DB) ----------------
+   characters is an array of objects: {name,series,tags,votes,image}
+*/
+let characters = [];
+
 /* ---------------- Vote lock storage ----------------
    Per-character timestamps in localStorage as:
    vote_ts_<CharacterName> = <ms since epoch>
 */
 let votedTimestamps = JSON.parse(localStorage.getItem("votedTimestamps") || "{}");
 
-/* ---------------- Realtime votes loader ---------------- */
-function loadVotes(callback) {
-  const votesRef = ref(db, "characters");
-  onValue(votesRef, snapshot => {
+/* ---------------- Helpers ---------------- */
+const ADMIN_PASSWORD = "SnowyOwl";
+function keyForName(name) {
+  // use encodeURIComponent to make a safe key for Firebase
+  return encodeURIComponent(name);
+}
+
+/* ---------------- Initialize DB if empty ---------------- */
+function ensureDefaultCharacters(callback) {
+  const dataRef = ref(db, "charactersData");
+  get(dataRef).then(snapshot => {
+    const val = snapshot.val();
+    if (!val || Object.keys(val).length === 0) {
+      // write defaults
+      const updates = {};
+      DEFAULT_CHARACTERS.forEach(c => {
+        updates[keyForName(c.name)] = {
+          series: c.series,
+          tags: c.tags,
+          votes: c.votes,
+          image: c.image
+        };
+      });
+      set(dataRef, updates).then(() => callback()).catch(err => {
+        console.error("Failed to write default characters:", err);
+        callback();
+      });
+    } else {
+      callback();
+    }
+  }).catch(err => {
+    console.error("Error checking DB:", err);
+    callback();
+  });
+}
+
+/* ---------------- Realtime loader for full character objects ---------------- */
+function loadCharactersRealtime(callback) {
+  const dataRef = ref(db, "charactersData");
+  onValue(dataRef, snapshot => {
     const data = snapshot.val() || {};
-    characters.forEach(c => {
-      c.votes = data[c.name] || c.votes || 0;
+    characters = Object.keys(data).map(k => {
+      const obj = data[k] || {};
+      return {
+        name: decodeURIComponent(k),
+        series: obj.series || "Unknown",
+        tags: obj.tags || [],
+        votes: typeof obj.votes === "number" ? obj.votes : Number(obj.votes || 0),
+        image: obj.image || ""
+      };
     });
-    Object.keys(data).forEach(name => {
-      if (!characters.find(x => x.name === name)) {
-        characters.push({
-          name,
-          series: "Unknown",
-          tags: [],
-          votes: data[name],
-          image: ""
-        });
-      }
-    });
+    // keep local order stable by sorting by votes desc
+    characters.sort((a,b) => b.votes - a.votes);
     callback();
   }, err => {
-    console.error("Failed to load votes:", err);
+    console.error("Failed to load characters:", err);
     callback();
   });
 }
@@ -85,10 +124,10 @@ window.vote = function(name) {
     votedTimestamps[name] = now;
     localStorage.setItem("votedTimestamps", JSON.stringify(votedTimestamps));
 
-    // Update Firebase
-    const charRef = ref(db, "characters/" + name);
+    // Update Firebase: increment votes atomically by reading then setting
+    const charRef = ref(db, "charactersData/" + keyForName(name) + "/votes");
     get(charRef).then(snapshot => {
-      let currentVotes = snapshot.exists() ? snapshot.val() : 0;
+      let currentVotes = snapshot.exists() ? Number(snapshot.val()) : 0;
       set(charRef, currentVotes + 1);
     }).catch(err => {
       console.error(err);
@@ -100,22 +139,64 @@ window.vote = function(name) {
   }
 };
 
+/* ---------------- Admin-only: delete character ---------------- */
+window.deleteCharacter = function(name) {
+  if (!confirm(`Delete "${name}" permanently? This cannot be undone.`)) return;
+  const key = keyForName(name);
+  const charRef = ref(db, "charactersData/" + key);
+  // remove from DB
+  set(charRef, null).then(() => {
+    // local characters will update via realtime listener
+    console.log("Deleted", name);
+  }).catch(err => {
+    console.error("Delete failed:", err);
+    alert("Failed to delete character.");
+  });
+};
+
+/* ---------------- Admin-only: set votes manually ---------------- */
+window.setVotesAdmin = function(name, newVotes) {
+  const n = Number(newVotes);
+  if (!Number.isFinite(n) || n < 0) {
+    alert("Enter a valid non-negative number.");
+    return;
+  }
+  const charRef = ref(db, "charactersData/" + keyForName(name) + "/votes");
+  set(charRef, n).then(() => {
+    // realtime listener will update UI
+  }).catch(err => {
+    console.error("Failed to set votes:", err);
+    alert("Failed to update votes.");
+  });
+};
+
 /* ---------------- Utility: unique sorted tags ---------------- */
 function getAllTags() {
   const all = [...new Set(characters.flatMap(c => c.tags || []))];
   return all.sort((a,b) => a.localeCompare(b, undefined, {sensitivity:'base'}));
 }
 
-/* ---------------- Render ranking (right column) ---------------- */
-function renderRankList() {
+/* ---------------- Render ranking (right column) ----------------
+   Accepts optional filter string so ranking respects current filter.
+*/
+function renderRankList(filter = null) {
   const rankList = document.getElementById("rank-list");
   if (!rankList) return;
   rankList.innerHTML = "";
-  const top = [...characters].sort((a,b) => b.votes - a.votes).slice(0,8);
+  const q = filter ? String(filter).toLowerCase() : null;
+  const filtered = characters.filter(c => {
+    if (!q) return true;
+    if (c.name && c.name.toLowerCase().includes(q)) return true;
+    if (c.series && c.series.toLowerCase().includes(q)) return true;
+    if (c.tags && c.tags.some(t => t.toLowerCase().includes(q))) return true;
+    return false;
+  });
+  const top = filtered.sort((a,b) => b.votes - a.votes).slice(0,10);
   top.forEach(c => {
     const li = document.createElement("li");
     li.textContent = `${c.name} — ${c.votes}`;
     li.onclick = () => {
+      // filter to that character and scroll into view
       renderCharacters(c.name);
       setTimeout(() => {
         const card = Array.from(document.querySelectorAll('.card .hero-name'))
@@ -127,13 +208,16 @@ function renderRankList() {
   });
 }
 
-/* ---------------- Render characters (hero-top variant) ---------------- */
+/* ---------------- Render characters (hero-top variant) ----------------
+   Admin controls (delete / vote editor) are shown only when sessionStorage.isAdmin === "1"
+*/
 window.renderCharacters = function(filter = null) {
   const list = document.getElementById("character-list");
   if (!list) return;
   list.innerHTML = "";
 
   const q = filter ? String(filter).toLowerCase() : null;
+  const isAdmin = sessionStorage.getItem("isAdmin") === "1";
 
   characters
     .filter(c => {
@@ -149,7 +233,19 @@ window.renderCharacters = function(filter = null) {
       card.className = "card hero-top";
 
       const imageUrl = c.image || "";
+      // admin controls: delete + vote editor
+      const adminControlsHtml = isAdmin ? `
+        <div class="admin-controls">
+          <button class="delete" onclick="deleteCharacter('${c.name.replace(/'/g,"\\'")}')">Delete</button>
+          <div class="vote-editor">
+            <input type="number" id="vote-input-${encodeURIComponent(c.name)}" value="${c.votes}" min="0" />
+            <button class="save" onclick="(function(){ const v = document.getElementById('vote-input-${encodeURIComponent(c.name)}').value; setVotesAdmin('${c.name.replace(/'/g,"\\'")}', v); })()">Save</button>
+          </div>
+        </div>
+      ` : "";
+
       card.innerHTML = `
+        ${adminControlsHtml}
         <div class="hero" style="background-image:url('${imageUrl}');" aria-hidden="true">
           <h3 class="hero-name">${c.name}</h3>
           <div class="hero-tags">
@@ -161,11 +257,12 @@ window.renderCharacters = function(filter = null) {
           <p class="series"><strong>Series:</strong> ${c.series}</p>
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <p class="votes" style="margin:0;"><strong>Votes:</strong> ${c.votes}</p>
-            <button class="vote-btn" onclick="vote('${c.name}')">Vote</button>
+            <button class="vote-btn" onclick="vote('${c.name.replace(/'/g,"\\'")}')">Vote</button>
           </div>
         </div>
       `;
 
+      // accessibility: expose name and tags to screen readers
       const sr = document.createElement('div');
       sr.className = 'visually-hidden';
       sr.setAttribute('aria-hidden','false');
@@ -175,31 +272,9 @@ window.renderCharacters = function(filter = null) {
       list.appendChild(card);
     });
 
-  renderRankList();
+  // update rank list with same filter
+  renderRankList(filter);
 };
-
-/* ---------------- Admin: simple password entry (client-side) ----------------
-   Password: SnowyOwl
-   Admin state stored in sessionStorage so it clears when the tab is closed.
-*/
-const ADMIN_PASSWORD = "SnowyOwl";
-function setAdminMode(enabled) {
-  const uploader = document.getElementById("uploader");
-  const adminPanel = document.getElementById("admin-panel");
-  const adminStatus = document.getElementById("admin-status");
-  const adminLogout = document.getElementById("admin-logout");
-  if (enabled) {
-    sessionStorage.setItem("isAdmin", "1");
-    uploader.hidden = false;
-    adminStatus.textContent = "Admin mode enabled";
-    adminLogout.hidden = false;
-  } else {
-    sessionStorage.removeItem("isAdmin");
-    uploader.hidden = true;
-    adminStatus.textContent = "";
-    adminLogout.hidden = true;
-  }
-}
 
 /* ---------------- Search bar + tag suggestions ---------------- */
 function setupSearchAndTags() {
@@ -293,21 +368,17 @@ function setupUploader() {
       return;
     }
 
-    const newChar = { name, series, tags, votes: 0, image };
-    characters.push(newChar);
-
-    // write initial votes to Firebase (0)
-    const charRef = ref(db, "characters/" + name);
-    set(charRef, 0).then(() => {
-      renderCharacters();
+    const newChar = { series, tags, votes: 0, image };
+    const charRef = ref(db, "charactersData/" + keyForName(name));
+    set(charRef, newChar).then(() => {
+      // realtime listener will pick up the new character
       nameIn.value = "";
       seriesIn.value = "";
       tagsIn.value = "";
       imageIn.value = "";
     }).catch(err => {
       console.error(err);
-      alert("Failed to save to database. Character added locally only.");
-      renderCharacters();
+      alert("Failed to save to database. Character not added.");
     });
   });
 
@@ -320,6 +391,24 @@ function setupUploader() {
 }
 
 /* ---------------- Admin UI wiring ---------------- */
+function setAdminMode(enabled) {
+  const uploader = document.getElementById("uploader");
+  const adminPanel = document.getElementById("admin-panel");
+  const adminStatus = document.getElementById("admin-status");
+  const adminLogout = document.getElementById("admin-logout");
+  if (enabled) {
+    sessionStorage.setItem("isAdmin", "1");
+    uploader.hidden = false;
+    adminStatus.textContent = "Admin mode enabled";
+    adminLogout.hidden = false;
+  } else {
+    sessionStorage.removeItem("isAdmin");
+    uploader.hidden = true;
+    adminStatus.textContent = "";
+    adminLogout.hidden = true;
+  }
+}
+
 function setupAdminUI() {
   const toggleBtn = document.getElementById("admin-toggle-btn");
   const adminPanel = document.getElementById("admin-panel");
@@ -338,6 +427,8 @@ function setupAdminUI() {
       setAdminMode(true);
       adminPassword.value = "";
       adminPanel.hidden = true;
+      // re-render to show admin controls
+      renderCharacters(document.getElementById('search-input').value || null);
     } else {
       adminStatus.textContent = "Incorrect password";
       setTimeout(() => adminStatus.textContent = "", 2000);
@@ -346,6 +437,7 @@ function setupAdminUI() {
 
   adminLogout.addEventListener('click', () => {
     setAdminMode(false);
+    renderCharacters(document.getElementById('search-input').value || null);
   });
 
   // restore admin state if session says so
@@ -357,9 +449,11 @@ function setupAdminUI() {
 }
 
 /* ---------------- Start app ---------------- */
-loadVotes(() => {
-  setupSearchAndTags();
-  setupAdminUI();
-  setupUploader();
-  renderCharacters();
+ensureDefaultCharacters(() => {
+  loadCharactersRealtime(() => {
+    setupSearchAndTags();
+    setupAdminUI();
+    setupUploader();
+    renderCharacters();
+  });
 });
