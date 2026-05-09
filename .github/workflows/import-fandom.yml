@@ -1,0 +1,26 @@
+name: Import Fandom Characters
+on:
+  workflow_dispatch: {}
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install
+        run: npm install
+      - name: Run import
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FANDOM_API_BASE: 'https://jujutsu-kaisen.fandom.com' # change to your target wiki
+          FANDOM_CATEGORY: 'Category:Characters' # change if needed
+          SLEEP_MS: '450'
+          PAGE_CHUNK: '20'
+          MAX_RETRIES: '5'
+          RETRY_BASE_MS: '600'
+        run: npm run import
