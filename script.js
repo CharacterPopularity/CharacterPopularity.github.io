@@ -172,7 +172,6 @@ window.saveAdminEdits = function(originalName, newName, tagsCsv, imageUrl, fando
   }
   const tags = String(tagsCsv || "").split(',').map(t => t.trim()).filter(Boolean);
   const updates = {
-    series: null, // series not edited here; keep existing unless admin changes via uploader or separate control
     tags,
     image: imageUrl || "",
     fandom: fandomUrl || ""
@@ -188,18 +187,15 @@ window.saveAdminEdits = function(originalName, newName, tagsCsv, imageUrl, fando
       return;
     }
     const base = snapshot.val() || {};
-    // merge base with updates and possibly new name
     const merged = Object.assign({}, base, {
       tags: updates.tags,
       image: updates.image,
       fandom: updates.fandom
     });
 
-    // If name changed, write to new key and delete old key
     if (oldKey !== newKey) {
       const newRef = ref(db, "charactersData/" + newKey);
       set(newRef, merged).then(() => {
-        // remove old
         set(charRefOld, null).then(() => {
           console.log("Renamed", originalName, "to", nameTrim);
         }).catch(err => {
@@ -210,7 +206,6 @@ window.saveAdminEdits = function(originalName, newName, tagsCsv, imageUrl, fando
         alert("Failed to rename character.");
       });
     } else {
-      // same key: just set merged object (preserve votes & series if present)
       const mergedWithSeries = Object.assign({}, merged, { series: base.series || merged.series, votes: base.votes || merged.votes || 0 });
       set(charRefOld, mergedWithSeries).then(() => {
         console.log("Saved edits for", originalName);
@@ -237,13 +232,17 @@ function renderRankList(filter = null) {
   if (!rankList) return;
   rankList.innerHTML = "";
   const q = filter ? String(filter).toLowerCase() : null;
+
+  // Build filtered set using same logic as renderCharacters
   const filtered = characters.filter(c => {
     if (!q) return true;
     if (c.name && c.name.toLowerCase().includes(q)) return true;
     if (c.series && c.series.toLowerCase().includes(q)) return true;
+    // tags: include if any tag contains the query substring
     if (c.tags && c.tags.some(t => t.toLowerCase().includes(q))) return true;
     return false;
   });
+
   const top = filtered.sort((a,b) => b.votes - a.votes).slice(0,10);
   top.forEach(c => {
     const li = document.createElement("li");
@@ -269,12 +268,18 @@ window.renderCharacters = function(filter = null) {
   const q = filter ? String(filter).toLowerCase() : null;
   const isAdmin = sessionStorage.getItem("isAdmin") === "1";
 
+  // Precompute tag matches for the query: any tag that contains the query substring
+  const matchedTags = q ? getAllTags().filter(t => t.toLowerCase().includes(q)) : [];
+
   characters
     .filter(c => {
       if (!q) return true;
       if (c.name && c.name.toLowerCase().includes(q)) return true;
       if (c.series && c.series.toLowerCase().includes(q)) return true;
+      // include if any tag contains the query substring OR tag is in matchedTags
       if (c.tags && c.tags.some(t => t.toLowerCase().includes(q))) return true;
+      // also include if character has any tag that equals one of matchedTags (redundant but explicit)
+      if (matchedTags.length && c.tags && c.tags.some(t => matchedTags.includes(t))) return true;
       return false;
     })
     .sort((a, b) => b.votes - a.votes)
@@ -310,9 +315,12 @@ window.renderCharacters = function(filter = null) {
         voteRow.appendChild(saveVoteBtn);
         adminControls.appendChild(voteRow);
 
-        // edit row: name, tags, image, fandom
-        const editRow = document.createElement("div");
-        editRow.className = "row edit-editor";
+        // edit column: name, tags, image, fandom
+        const editCol = document.createElement("div");
+        editCol.style.display = "flex";
+        editCol.style.flexDirection = "column";
+        editCol.style.gap = "6px";
+
         const nameInput = document.createElement("input");
         nameInput.type = "text";
         nameInput.value = c.name;
@@ -348,11 +356,6 @@ window.renderCharacters = function(filter = null) {
           saveAdminEdits(c.name, newName, tagsCsv, img, fandom);
         };
 
-        // stack inputs vertically inside editRow for readability
-        const editCol = document.createElement("div");
-        editCol.style.display = "flex";
-        editCol.style.flexDirection = "column";
-        editCol.style.gap = "6px";
         editCol.appendChild(nameInput);
         editCol.appendChild(tagsInput);
         editCol.appendChild(imageInput);
@@ -441,7 +444,6 @@ window.renderCharacters = function(filter = null) {
       sr.innerText = `${c.name}. Series: ${c.series}. Tags: ${c.tags.join(', ')}. Votes: ${c.votes}.`;
       card.appendChild(sr);
 
-      // clicking the card (if no fandom link) does nothing; if fandom link exists, anchor overlay handles it
       list.appendChild(card);
     });
 
@@ -463,40 +465,12 @@ function getVoteRemaining(name) {
   return `${hours}h ${mins}m`;
 }
 
-/* ---------------- Search bar + tag suggestions ---------------- */
-function setupSearchAndTags() {
+/* ---------------- Search behavior (no suggestions UI) ----------------
+   Typing narrows by name, series, and tags (tags matched by substring).
+*/
+function setupSearch() {
   const input = document.getElementById("search-input");
-  const suggestions = document.getElementById("tag-suggestions");
   const clearBtn = document.getElementById("clear-filters");
-
-  function showTagSuggestions() {
-    const tags = getAllTags();
-    suggestions.innerHTML = "";
-    if (tags.length === 0) {
-      const p = document.createElement('div');
-      p.textContent = "No tags available";
-      p.style.color = "#777";
-      suggestions.appendChild(p);
-    } else {
-      tags.forEach(t => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.textContent = t;
-        btn.onclick = () => {
-          input.value = t;
-          renderCharacters(t);
-          suggestions.hidden = true;
-          clearBtn.style.display = "inline-block";
-        };
-        suggestions.appendChild(btn);
-      });
-    }
-    suggestions.hidden = false;
-  }
-
-  input.addEventListener('focus', () => {
-    showTagSuggestions();
-  });
 
   input.addEventListener('input', (e) => {
     const v = e.target.value.trim();
@@ -509,18 +483,10 @@ function setupSearchAndTags() {
     }
   });
 
-  document.addEventListener('click', (ev) => {
-    const target = ev.target;
-    if (!document.getElementById('search-area').contains(target)) {
-      suggestions.hidden = true;
-    }
-  });
-
   clearBtn.onclick = () => {
     input.value = "";
     renderCharacters();
     clearBtn.style.display = "none";
-    suggestions.hidden = true;
   };
 
   clearBtn.style.display = "none";
@@ -637,7 +603,7 @@ function setupAdminUI() {
 /* ---------------- Start app ---------------- */
 ensureDefaultCharacters(() => {
   loadCharactersRealtime(() => {
-    setupSearchAndTags();
+    setupSearch();
     setupAdminUI();
     setupUploader();
     renderCharacters();
