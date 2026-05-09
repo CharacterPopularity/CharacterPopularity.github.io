@@ -37,11 +37,13 @@
     </div>
 
     <div id="admin-area" aria-label="Admin">
-      <button id="admin-toggle-btn" title="Admin">Admin</button>
+      <!-- small gear button toggles admin panel -->
+      <button id="admin-toggle-btn" title="Admin settings" aria-label="Open admin panel">⚙</button>
+
       <div id="admin-panel" hidden>
-        <input id="admin-password" type="password" placeholder="Enter admin password" aria-label="Admin password">
+        <input id="admin-password" type="password" placeholder="Password" aria-label="Admin password" style="width:140px">
         <button id="admin-login">Enter</button>
-        <button id="admin-logout" hidden>Exit Admin</button>
+        <button id="admin-logout" hidden>Exit</button>
         <div id="admin-status" aria-live="polite"></div>
       </div>
     </div>
@@ -57,6 +59,7 @@
           <input id="input-series" type="text" placeholder="Series" required>
           <input id="input-tags" type="text" placeholder="Tags (comma separated)">
           <input id="input-image" type="url" placeholder="Image URL" required>
+          <input id="input-fandom" type="url" placeholder="Fandom URL (optional)">
           <div style="display:flex;gap:8px;">
             <button id="add-btn" type="submit">Add character</button>
             <button id="clear-btn" type="button">Clear</button>
