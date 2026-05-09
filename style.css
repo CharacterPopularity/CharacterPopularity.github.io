@@ -88,14 +88,14 @@ header{
 /* Grid: force 5 columns per row on wide screens */
 #character-list{
   display:grid;
-  grid-template-columns: repeat(5, var(--card-w));
+  grid-template-columns: repeat(auto-fit, var(--card-w));
   gap:var(--gap);
   justify-content:start;
   padding:6px;
 }
 
 /* responsive: fewer columns on smaller screens */
-@media (max-width:1100px){
+/*@media (max-width:1100px){
   #character-list{ grid-template-columns: repeat(4, var(--card-w)); }
 }
 @media (max-width:900px){
@@ -106,7 +106,7 @@ header{
 }
 @media (max-width:420px){
   #character-list{ grid-template-columns: repeat(1, 100%); justify-items:center; }
-}
+}*/
 
 /* Card base (hero-top variant) */
 .card.hero-top{
@@ -294,9 +294,7 @@ header{
 #rank-list li:hover{color:var(--accent)}
 
 /* small screens */
-@media (max-width:920px){
-  #layout{flex-direction:column}
-  #right-col{width:100%}
+@media (max-width:520px){
 }
 
 /* Utility: visually-hidden but accessible (for screen readers) */
