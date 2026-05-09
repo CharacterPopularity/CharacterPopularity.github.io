@@ -19,7 +19,7 @@ jobs:
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
           FANDOM_API_BASE: 'https://jujutsu-kaisen.fandom.com' # change to your target wiki
           FANDOM_CATEGORY: 'Category:Characters' # change if needed
-          SLEEP_MS: '450'
+          SLEEP_MS: '150'
           PAGE_CHUNK: '20'
           MAX_RETRIES: '5'
           RETRY_BASE_MS: '600'
